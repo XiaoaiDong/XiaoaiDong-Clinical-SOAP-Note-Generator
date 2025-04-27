@@ -33,7 +33,7 @@ This project provides a two-part workflow to automatically generate clinical SOA
     * `PyQt6`: For the GUI application.
     * `fpdf2`: For saving transcripts as PDF.
 * **Optional (Highly Recommended):**
-    * `ffmpeg`: Required by Whisper and Pydub for handling various audio formats. Ensure it's installed and in your system's PATH.
+    * `ffmpeg.exe`: Required by Whisper and Pydub for handling various audio formats. Ensure it's installed and in your system's PATH before running audio to text. 
     * `pydub`: For audio format conversion.
     * `pyannote.audio`: For speaker diarization. Requires accepting model terms on Hugging Face (`pyannote/speaker-diarization-3.1`).
     * `Hugging Face Hub Account & Token`: Required for downloading the Pyannote model. Set the token in `backend.py` or as an environment variable.
