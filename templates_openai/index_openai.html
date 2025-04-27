@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenAI SOAP Note Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1>Clinical SOAP Note Generator (OpenAI GPT-4o)</h1>
+        <p>Upload dialogue transcripts (.txt) to automatically generate SOAP notes using OpenAI.</p>
+    </header>
+
+    <main>
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="flash-messages">
+              <p><strong>Notice / Errors:</strong></p>
+              <ul>
+                {% for message in messages %}
+                  <li class="flash-error">{{ message }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <form id="upload-form" action="{{ url_for('process_files_openai') }}" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="dialogue_files">Select Dialogue Files (.txt):</label>
+                <input type="file" id="dialogue_files" name="dialogue_files" accept=".txt" multiple required>
+                <small>You can select multiple files using Shift or Ctrl/Cmd key.</small>
+            </div>
+            <div class="form-group">
+                <button type="submit" class="button" id="submit-button">Generate SOAP Notes (OpenAI)</button>
+            </div>
+        </form>
+
+        <div id="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p>Generating SOAP Notes via OpenAI... Please wait.</p>
+            <p><small>(This may take some time depending on file size and API response time)</small></p>
+        </div>
+
+    </main>
+
+    <footer>
+        <p>&copy; Xiaoai Dong/Practicum in Data Analysis II. Powered by OpenAI.</p>
+    </footer>
+
+    <script>
+        const form = document.getElementById('upload-form');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const submitButton = document.getElementById('submit-button');
+        const fileInput = document.getElementById('dialogue_files');
+
+        form.addEventListener('submit', function(event) {
+            // Basic check if files are selected (though 'required' handles most cases)
+            if (fileInput.files.length === 0) {
+                 // Optionally add a js alert or rely on HTML5 validation
+                 // event.preventDefault(); // Stop submission if needed
+                 return;
+            }
+            // Hide button and show spinner on valid submission
+            if(submitButton) {
+                 submitButton.style.display = 'none';
+            }
+            if(loadingIndicator) {
+                loadingIndicator.style.display = 'block';
+            }
+            // Form submission proceeds naturally
+        });
+    </script>
+
+</body>
+</html>

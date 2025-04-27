@@ -1,0 +1,277 @@
+/* static_openai/style.css */
+/* Content is identical to the previously provided SOAP note/static/style.css */
+
+:root {
+    --primary-bg: #f8f9fa; /* Very light grey background */
+    --secondary-bg: #ffffff; /* White for content boxes */
+    --header-bg: #2c3e50;  /* Dark Slate Blue/Grey */
+    --footer-bg: #34495e;  /* Slightly lighter dark blue/grey */
+    --text-color: #333333; /* Dark grey for text */
+    --header-text: #ecf0f1; /* Light grey/white for header/footer text */
+    --accent-color: #3498db; /* Professional Blue */
+    --button-bg: #2980b9;   /* Darker blue for button */
+    --button-hover-bg: #1f6390;
+    --border-color: #dee2e6; /* Light grey border */
+    --pre-bg: #e9ecef; /* Light grey for code blocks */
+    --error-color: #e74c3c; /* Red for errors */
+    --flash-error-bg: #f8d7da; /* Light red for error flashes */
+    --flash-error-text: #721c24; /* Dark red text for errors */
+    --flash-error-border: #f5c6cb;
+
+    --font-family: 'Inter', sans-serif; /* Modern sans-serif font */
+    --base-font-size: 16px;
+    --line-height: 1.6;
+
+    --container-width: 960px; /* Max width for main content */
+    --spacing-unit: 1rem; /* Approx 16px, use for padding/margins */
+}
+
+/* Basic Reset */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    font-size: var(--base-font-size);
+    line-height: var(--line-height);
+    color: var(--text-color);
+    background-color: var(--primary-bg);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* Ensure footer stays at bottom */
+}
+
+header {
+    background-color: var(--header-bg);
+    color: var(--header-text);
+    padding: calc(var(--spacing-unit) * 2) var(--spacing-unit);
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+}
+
+header h1 {
+    margin-bottom: calc(var(--spacing-unit) * 0.5);
+    font-weight: 700; /* Bolder heading */
+    font-size: 2.2rem;
+}
+
+header p {
+    font-size: 1.1rem;
+    font-weight: 300; /* Lighter subtitle */
+    color: #bdc3c7; /* Lighter grey for subtitle */
+}
+
+main {
+    flex-grow: 1; /* Allow main content to grow */
+    width: 100%;
+    max-width: var(--container-width);
+    margin: calc(var(--spacing-unit) * 2) auto; /* Center content */
+    padding: calc(var(--spacing-unit) * 2);
+    background-color: var(--secondary-bg);
+    border-radius: 8px; /* Rounded corners */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05); /* Soft shadow */
+}
+
+footer {
+    background-color: var(--footer-bg);
+    color: var(--header-text);
+    text-align: center;
+    padding: var(--spacing-unit) var(--spacing-unit);
+    margin-top: auto; /* Pushes footer to bottom */
+    font-size: 0.9rem;
+    font-weight: 300;
+}
+
+/* Form Styling */
+.form-group {
+    margin-bottom: calc(var(--spacing-unit) * 1.5);
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: calc(var(--spacing-unit) * 0.5);
+    font-weight: 500; /* Medium weight label */
+}
+
+.form-group input[type="file"] {
+    display: block;
+    width: 100%;
+    padding: calc(var(--spacing-unit) * 0.75);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 1rem;
+    background-color: #fff;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+.form-group input[type="file"]:hover {
+    border-color: var(--accent-color);
+}
+
+/* Style the file input button (browser specific) */
+.form-group input[type="file"]::file-selector-button {
+    margin-right: var(--spacing-unit);
+    padding: calc(var(--spacing-unit) * 0.5) var(--spacing-unit);
+    border: none;
+    background-color: var(--accent-color);
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.form-group input[type="file"]::file-selector-button:hover {
+     background-color: var(--button-bg);
+}
+
+.form-group small {
+    display: block;
+    margin-top: calc(var(--spacing-unit) * 0.3);
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+/* Button Styling */
+.button {
+    display: inline-block;
+    padding: calc(var(--spacing-unit) * 0.8) calc(var(--spacing-unit) * 1.8);
+    background-color: var(--button-bg);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+.button:hover {
+    background-color: var(--button-hover-bg);
+    transform: translateY(-1px); /* Subtle lift */
+}
+.button:active {
+     transform: translateY(0);
+}
+.button-secondary {
+    background-color: #6c757d;
+}
+.button-secondary:hover {
+     background-color: #5a6268;
+}
+
+/* Results Page Styling */
+.result-item {
+    background-color: var(--primary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: calc(var(--spacing-unit) * 1.5);
+    margin-bottom: calc(var(--spacing-unit) * 2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+}
+
+.result-item h2 {
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-bottom: calc(var(--spacing-unit) * 0.3);
+    color: var(--header-bg);
+}
+.result-item h3 {
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin-top: var(--spacing-unit);
+    margin-bottom: calc(var(--spacing-unit) * 0.7);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: calc(var(--spacing-unit) * 0.3);
+}
+
+.result-item p small {
+     color: #6c757d;
+}
+
+pre {
+    background-color: var(--pre-bg);
+    padding: var(--spacing-unit);
+    border-radius: 4px;
+    overflow-x: auto; /* Horizontal scroll for long lines if needed */
+    white-space: pre-wrap; /* Wrap lines */
+    word-wrap: break-word; /* Break long words */
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.95rem;
+    border: 1px solid #ced4da;
+    line-height: 1.5; /* Improve readability in pre */
+}
+
+code {
+  font-family: inherit; /* Use font from pre */
+  background-color: transparent; /* Ensure code bg doesn't override pre bg */
+  padding: 0; /* Reset padding if needed */
+}
+
+.actions {
+    margin-top: calc(var(--spacing-unit) * 2);
+    text-align: center;
+}
+
+/* Flash Messages Styling */
+.flash-messages {
+    background-color: var(--flash-error-bg);
+    color: var(--flash-error-text);
+    border: 1px solid var(--flash-error-border);
+    padding: var(--spacing-unit);
+    margin-bottom: calc(var(--spacing-unit) * 1.5);
+    border-radius: 4px;
+}
+.flash-messages p {
+    margin-bottom: calc(var(--spacing-unit)*0.5);
+    font-weight: 500;
+}
+.flash-messages ul {
+    list-style: disc; /* Use bullets for errors */
+    padding-left: calc(var(--spacing-unit)*1.5); /* Indent list */
+    margin-top: calc(var(--spacing-unit)*0.5);
+}
+.flash-messages li {
+     margin-bottom: calc(var(--spacing-unit) * 0.3);
+}
+
+/* Loading Indicator Styles */
+#loading-indicator {
+    text-align: center;
+    margin-top: calc(var(--spacing-unit) * 3);
+    padding: calc(var(--spacing-unit) * 2);
+    background-color: rgba(233, 236, 239, 0.8); /* Semi-transparent light grey */
+    border-radius: 8px;
+    border: 1px dashed var(--border-color);
+}
+
+#loading-indicator p {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-top: var(--spacing-unit);
+    color: var(--text-color);
+}
+
+#loading-indicator small {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.spinner {
+    border: 6px solid #f3f3f3; /* Light grey */
+    border-top: 6px solid var(--accent-color); /* Blue */
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto; /* Center the spinner */
+    margin-bottom: var(--spacing-unit); /* Space below spinner */
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

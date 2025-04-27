@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinical SOAP Note Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1>Clinical SOAP Note Generator</h1>
+        <p>Upload therapy dialogue transcripts (.txt) to generate SOAP notes.</p>
+    </header>
+
+    <main>
+        {# Flash messages area - shows messages from redirects and JS #}
+        <div id="flash-messages-container">
+             {% with messages = get_flashed_messages(with_categories=true) %}
+               {% if messages %}
+                 <div class="flash-messages">
+                   {% for category, message in messages %}
+                      <p class="flash-{{ category|default('notice', true) }}"><strong>{{ category|capitalize }}:</strong> {{ message }}</p>
+                   {% endfor %}
+                 </div>
+               {% endif %}
+             {% endwith %}
+        </div>
+
+        <form id="upload-form" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="dialogue_files">Select Dialogue Files (.txt):</label>
+                <input type="file" id="dialogue_files" name="dialogue_files" accept=".txt" multiple required>
+                <small>You can select multiple files using Shift or Ctrl/Cmd key.</small>
+            </div>
+
+            <div class="form-group">
+                <label class="block-label">Choose Processing Model:</label>
+                <div class="model-choice-container">
+                    <div class="model-block {% if not local_ready %}disabled{% else %}selected{% endif %}" id="block-local" data-value="local">
+                        <input type="radio" name="model_choice_radio" value="local" id="radio_local" {% if not local_ready %}disabled{% endif %} {% if local_ready %}checked{% endif %}>
+                        <h4>Local (DeepSeek)</h4>
+                        <p>Processes files using the locally hosted model. Good for privacy.</p>
+                         {% if not local_ready %}<p><small>(Currently Unavailable)</small></p>{% endif %}
+                    </div>
+                    <div class="model-block {% if not openai_ready %}disabled{% endif %}" id="block-openai" data-value="openai">
+                         <input type="radio" name="model_choice_radio" value="openai" id="radio_openai" {% if not openai_ready %}disabled{% endif %} {% if not local_ready and openai_ready %}checked{% endif %}>
+                        <h4>OpenAI API (GPT-4o)</h4>
+                        <p>Uses the powerful OpenAI model via API. Requires API key setup.</p>
+                         {% if not openai_ready %}<p><small>(Currently Unavailable)</small></p>{% endif %}
+                    </div>
+                </div>
+                <input type="hidden" name="model_choice" id="model_choice_hidden" value="{% if local_ready %}local{% elif openai_ready %}openai{% else %}local{% endif %}">
+            </div>
+            <div class="form-group">
+                <button type="submit" class="button" id="submit-button" {% if not local_ready and not openai_ready %}disabled title="No models available for processing"{% endif %}>
+                    Generate SOAP Notes
+                </button>
+                 {% if not local_ready and not openai_ready %}
+                     <p class="flash-error" style="margin-top: 5px;">No processing models are available. Check server logs.</p>
+                 {% endif %}
+            </div>
+        </form>
+
+        <div id="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p id="loading-main-text">Processing...</p>
+            <p id="progress-status" style="margin-top: 10px; font-weight: bold; min-height: 1.2em;"></p>
+            <p><small>(This may take some time, especially with multiple files...)</small></p>
+        </div>
+
+    </main>
+
+    <footer>
+        <p>&copy; Xiaoai Dong/Practicum in Data Analysis II. Powered by DeepSeek & OpenAI.</p>
+    </footer>
+
+    <script>
+        const form = document.getElementById('upload-form');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const loadingMainText = document.getElementById('loading-main-text');
+        const submitButton = document.getElementById('submit-button');
+        const fileInput = document.getElementById('dialogue_files');
+        const progressStatus = document.getElementById('progress-status');
+        const flashMessagesContainer = document.getElementById('flash-messages-container');
+        const modelChoiceContainer = document.querySelector('.model-choice-container');
+        const hiddenModelInput = document.getElementById('model_choice_hidden');
+
+        // --- Model Availability Flags (Passed from Flask) ---
+        const isLocalReady = {{ local_ready | tojson }};
+        const isOpenAIReady = {{ openai_ready | tojson }};
+
+        let eventSource = null;
+
+        // Function to display flash messages
+        function displayFlashMessage(message, category = 'notice') {
+             if (!flashMessagesContainer) return;
+             const messageDiv = document.createElement('div');
+             messageDiv.className = 'flash-messages';
+             const messageP = document.createElement('p');
+             messageP.className = `flash-${category}`;
+             messageP.innerHTML = `<strong>${category.charAt(0).toUpperCase() + category.slice(1)}:</strong> ${message}`;
+             messageDiv.appendChild(messageP);
+             flashMessagesContainer.appendChild(messageDiv);
+        }
+
+        // Function to handle model block selection
+        function handleModelSelection(event) {
+             const clickedBlock = event.target.closest('.model-block');
+             if (!clickedBlock || clickedBlock.classList.contains('disabled')) {
+                 return;
+             }
+
+             modelChoiceContainer.querySelectorAll('.model-block').forEach(block => {
+                 block.classList.remove('selected');
+                 const radio = block.querySelector('input[type="radio"]');
+                 if (radio) radio.checked = false;
+             });
+
+             clickedBlock.classList.add('selected');
+             const selectedValue = clickedBlock.getAttribute('data-value');
+             hiddenModelInput.value = selectedValue;
+             const selectedRadio = clickedBlock.querySelector('input[type="radio"]');
+             if (selectedRadio) selectedRadio.checked = true;
+
+             console.log("Model selected:", selectedValue);
+         }
+
+        // Add event listener to the container
+        if (modelChoiceContainer) {
+             modelChoiceContainer.addEventListener('click', handleModelSelection);
+        }
+
+        // Set initial selection based on availability on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const initialValue = hiddenModelInput.value; // Value potentially set by Flask template logic
+            const initialBlock = document.getElementById(`block-${initialValue}`);
+
+            // Clear any server-rendered selections first
+             modelChoiceContainer.querySelectorAll('.model-block').forEach(block => {
+                 block.classList.remove('selected');
+                 const radio = block.querySelector('input[type="radio"]');
+                  if(radio) radio.checked = false;
+             });
+
+             // Try selecting the default block if it's available
+            if (initialBlock && !initialBlock.classList.contains('disabled')) {
+                initialBlock.classList.add('selected');
+                const radio = initialBlock.querySelector('input[type="radio"]');
+                if(radio) radio.checked = true;
+                hiddenModelInput.value = initialValue; // Ensure hidden input matches
+                console.log("Initial model selection (default available):", initialValue);
+            } else {
+                // Fallback: If the default (potentially 'local') is disabled, select the first available one
+                const firstAvailable = modelChoiceContainer.querySelector('.model-block:not(.disabled)');
+                if (firstAvailable) {
+                     firstAvailable.classList.add('selected');
+                     const firstAvailableValue = firstAvailable.getAttribute('data-value');
+                     hiddenModelInput.value = firstAvailableValue;
+                     const radio = firstAvailable.querySelector('input[type="radio"]');
+                     if(radio) radio.checked = true;
+                     console.log("Initial default model was unavailable, selected first available:", hiddenModelInput.value);
+                } else {
+                     console.warn("No models available, selection not possible.");
+                     // Submit button should already be disabled by template logic
+                     hiddenModelInput.value = ''; // No valid selection
+                }
+            }
+        });
+
+
+        // --- Event Source Connection Logic (connectEventSource) ---
+         function connectEventSource() {
+             if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
+                  console.log("SSE connection already open or connecting.");
+                  return;
+             }
+             console.log("Connecting to SSE stream...");
+             if (progressStatus) progressStatus.textContent = "Connecting to progress stream...";
+
+             const streamUrl = "{{ url_for('stream') }}";
+             eventSource = new EventSource(streamUrl);
+
+             eventSource.onopen = function() {
+                 console.log("SSE Connection Opened.");
+                 if (progressStatus) progressStatus.textContent = "Progress stream connected.";
+             };
+
+             eventSource.addEventListener('progress', function(event) {
+                 console.log("SSE Progress:", event.data);
+                 if (progressStatus) progressStatus.textContent = event.data;
+             });
+
+              eventSource.addEventListener('warning', function(event) {
+                 console.warn("SSE Warning:", event.data);
+                  displayFlashMessage(event.data, 'warning');
+                  if (progressStatus) progressStatus.innerHTML += `<br><span style="color: orange;">(Warning received)</span>`;
+
+             });
+
+             eventSource.addEventListener('error', function(event) {
+                  console.error("SSE Error:", event.data);
+                  const errorMessage = `Processing Error: ${event.data}`;
+                  if (progressStatus) progressStatus.innerHTML = `<span style="color: red;">${errorMessage}</span>`;
+                  if (loadingMainText) loadingMainText.textContent = "Error Occurred";
+                  displayFlashMessage(errorMessage, 'error');
+                  if (eventSource) eventSource.close();
+                  if (submitButton) submitButton.style.display = 'inline-block';
+                  if (submitButton) submitButton.disabled = false;
+             });
+
+             eventSource.addEventListener('complete', function(event) {
+                 console.log("SSE Complete:", event.data);
+                 if (loadingMainText) loadingMainText.textContent = "Processing Complete";
+                 if (progressStatus) progressStatus.textContent = event.data;
+                 if (eventSource) eventSource.close();
+                 setTimeout(() => {
+                     window.location.href = "{{ url_for('show_results') }}";
+                 }, 1500);
+             });
+
+             eventSource.onerror = function(error) {
+                 console.error("SSE EventSource Error:", error);
+                  if (!(eventSource && eventSource.readyState === EventSource.CLOSED)) {
+                     const connErrorMsg = "Connection to progress stream lost or closed unexpectedly.";
+                      if (progressStatus) progressStatus.textContent = connErrorMsg;
+                      if (loadingMainText) loadingMainText.textContent = "Connection Error";
+                      displayFlashMessage(connErrorMsg, 'error');
+                      if (submitButton) submitButton.style.display = 'inline-block';
+                      if (submitButton) submitButton.disabled = false;
+                  } else {
+                       console.log("SSE closed gracefully or after completion/error event.");
+                  }
+                  if (eventSource) { eventSource.close(); }
+             };
+         } // end connectEventSource
+
+
+        // --- Form Submission Logic ---
+        form.addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent default submission
+
+            if (fileInput.files.length === 0) {
+                 displayFlashMessage("Please select at least one .txt file.", 'error');
+                 return;
+            }
+            // Check if a model is selected (via the hidden input)
+            if (!hiddenModelInput.value) {
+                 // This case should ideally not happen if DOMContentLoaded logic works,
+                 // but good to have a fallback check.
+                 displayFlashMessage("Please select an available processing model.", 'error');
+                 return;
+             }
+
+            // UI updates for loading state
+            if(loadingIndicator) loadingIndicator.style.display = 'block';
+            if(submitButton) submitButton.style.display = 'none';
+            if(loadingMainText) loadingMainText.textContent = "Uploading files and starting process...";
+            if(progressStatus) progressStatus.textContent = "";
+            flashMessagesContainer.innerHTML = ''; // Clear dynamic messages
+
+            // FormData captures all form fields, including the hidden input
+            const formData = new FormData(form);
+            console.log("Submitting with model:", formData.get('model_choice')); // Check value
+
+            const processUrl = "{{ url_for('process_files_start') }}";
+
+            // Fetch call
+            fetch(processUrl, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                 if (!response.ok) {
+                     return response.json().then(errData => {
+                         throw new Error(errData.message || `Server error: ${response.status}`);
+                     }).catch(() => {
+                         throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                     });
+                 }
+                 return response.json();
+            })
+            .then(data => {
+                console.log("Fetch /process Response:", data);
+                if (data.success) {
+                    if (loadingMainText) loadingMainText.textContent = data.message || "Processing started...";
+                    connectEventSource();
+                     if (data.invalid_files && data.invalid_files.length > 0) {
+                          data.invalid_files.forEach(msg => displayFlashMessage(msg, 'warning'));
+                     }
+                } else {
+                    throw new Error(data.message || "Unknown error starting process.");
+                }
+            })
+            .catch(error => {
+                console.error('Fetch /process Error:', error);
+                displayFlashMessage(`Failed to start processing: ${error.message}`, 'error');
+                if (loadingIndicator) loadingIndicator.style.display = 'none';
+                if (submitButton) submitButton.style.display = 'inline-block';
+                if (submitButton) submitButton.disabled = false;
+            });
+        });
+
+    </script>
+
+</body>
+</html>

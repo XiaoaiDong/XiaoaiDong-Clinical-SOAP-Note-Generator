@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated SOAP Notes (OpenAI)</title>
+     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1>Generated SOAP Notes (OpenAI Result)</h1>
+    </header>
+
+    <main>
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="flash-messages">
+              <p><strong>Processing Notices / Errors Encountered:</strong></p>
+              <ul>
+                {% for message in messages %}
+                  <li class="flash-error">{{ message }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        {% if results %}
+            {% for item in results %}
+                <div class="result-item">
+                    <h2>File: {{ item.filename }}</h2>
+                    {% if item.time != "N/A" %}
+                    <p><small>Processing Time (OpenAI): {{ item.time }} seconds</small></p>
+                    {% endif %}
+                    <h3>Generated SOAP Note:</h3>
+                    <pre><code>{{ item.soap_note }}</code></pre>
+                </div>
+            {% endfor %}
+        {% else %}
+            {% if not get_flashed_messages() %}
+                 <p>No SOAP notes were generated. Please go back and upload valid .txt files.</p>
+             {% endif %}
+        {% endif %}
+
+        <div class="actions">
+             <a href="{{ url_for('index_openai') }}" class="button button-secondary">Upload More Files</a>
+        </div>
+    </main>
+
+    <footer>
+         <p>&copy; Xiaoai Dong/Practicum in Data Analysis II. Powered by OpenAI.</p>
+    </footer>
+</body>
+</html>

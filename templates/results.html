@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated SOAP Notes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Generated SOAP Notes</h1>
+    </header>
+
+    <main>
+        {# Flash messages area - shows errors passed from backend #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-messages">
+              {% for category, message in messages %}
+                 {# Displaying only error category messages here, assuming others were shown on index #}
+                 {% if category == 'error' %}
+                     <p class="flash-{{ category }}"><strong>{{ category|capitalize }}:</strong> {{ message }}</p>
+                 {% endif %}
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        {# Check if results list exists and is not empty #}
+        {% if results is defined and results %}
+            {% for item in results %}
+                <div class="result-item" id="result-{{ loop.index }}">
+                    <h2>File: {{ item.filename | default('Unknown Filename', true) }}</h2>
+                    {# **NEW: Display Model Used** #}
+                    <p><small>Processed using: {{ item.model_used | default('Unknown Model', true) }}</small></p>
+                    {# Display processing time if available #}
+                    {% if item.time and item.time != "N/A" %}
+                    <p><small>Processing Time: {{ item.time }} seconds</small></p>
+                    {% endif %}
+
+                    <h3>Generated SOAP Note:</h3>
+                    {# Use item.filename for data-filename attribute #}
+                    <pre class="soap-note-content" data-filename="{{ item.filename | default('', true) }}"><code>{{ item.soap_note | default('No SOAP note generated or error occurred.', true) }}</code></pre>
+                    {# PDF button, index starts from 1 #}
+                    <button class="button button-pdf" onclick="saveAsPdf({{ loop.index }})">Save as PDF</button>
+                </div>
+            {% else %}
+                 {# This part is reached if results is an empty list #}
+                 <p>No SOAP notes were generated in this session. Please check any error messages above or try uploading again.</p>
+            {% endfor %}
+        {% else %}
+             {# This part is reached if results variable is not defined or None #}
+             <p>No results data available for this session. Please go back and upload files.</p>
+        {% endif %}
+
+        <div class="actions">
+            <a href="{{ url_for('index') }}" class="button button-secondary">Upload More Files</a>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; Xiaoai Dong/Practicum in Data Analysis II. Powered by DeepSeek & OpenAI.</p>
+    </footer>
+
+    <script>
+        // --- results.html JavaScript for PDF Generation ---
+        document.addEventListener('DOMContentLoaded', (event) => {
+            // Check if jsPDF is loaded
+            if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
+                console.error("jsPDF library not loaded correctly!");
+                // Disable all PDF buttons if library is missing
+                document.querySelectorAll('.button-pdf').forEach(button => {
+                    button.disabled = true;
+                    button.textContent = 'PDF Error';
+                    button.title = 'jsPDF library failed to load.';
+                });
+            }
+        });
+
+        function saveAsPdf(resultIndex) {
+             // Ensure jsPDF is available before proceeding
+             if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
+                  alert('Error: jsPDF library is not available. Cannot save PDF.'); return;
+             }
+             // Destructure jsPDF from the window object
+             const { jsPDF } = window.jspdf;
+
+            // Find the specific result container using the loop index
+            const resultItem = document.getElementById(`result-${resultIndex}`);
+            if (!resultItem) {
+                console.error(`Result item container 'result-${resultIndex}' not found.`);
+                alert(`Error: Could not find the result item to save.`); return;
+            }
+
+            // Find the <pre> element containing the SOAP note within that container
+            const preElement = resultItem.querySelector('.soap-note-content');
+            if (!preElement) {
+                console.error(`SOAP content <pre> element not found within 'result-${resultIndex}'.`);
+                alert('Error: Could not find the SOAP note content element.'); return;
+            }
+
+            // Get the text content and the original filename
+            const soapNoteText = preElement.innerText;
+            const originalFilename = preElement.getAttribute('data-filename'); // Get filename from data attribute
+
+            // Basic validation of content and filename
+            if (!soapNoteText || !soapNoteText.trim() || soapNoteText.includes('No SOAP note generated') || soapNoteText.includes('Error processing')) {
+                alert('Cannot save PDF: The content appears empty or indicates an error.'); return;
+            }
+             if (!originalFilename) {
+                 console.warn('Filename missing from data-filename attribute. Using a generic name.');
+                 // Keep going but use a default filename later
+            }
+
+            try {
+                // Create a new jsPDF document (portrait, points, A4)
+                const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
+
+                // Set document properties (optional)
+                doc.setProperties({
+                    title: `SOAP Note - ${originalFilename || 'generated_note'}`,
+                    subject: 'Generated SOAP Note'
+                });
+
+                // Define margins and calculate usable width
+                const margin = 40; // Points
+                const usableWidth = doc.internal.pageSize.getWidth() - 2 * margin;
+
+                // Set font size for the text
+                doc.setFontSize(11);
+
+                // Split the text into lines that fit the usable width
+                const lines = doc.splitTextToSize(soapNoteText, usableWidth);
+
+                // Check if splitting resulted in any lines
+                if (!lines || lines.length === 0) {
+                    console.error("jsPDF splitTextToSize returned no lines. Text might be empty or invalid.");
+                    alert("Error: Failed to process text content for PDF generation."); return;
+                }
+
+                // Add the text lines to the document, starting at the margin
+                doc.text(lines, margin, margin);
+
+                // Determine the PDF filename - replace .txt with .pdf or use default
+                const pdfFilename = originalFilename ? originalFilename.replace(/\.txt$/i, '.pdf') : `soap_note_${resultIndex}.pdf`;
+
+                // Save the PDF
+                doc.save(pdfFilename);
+
+            } catch (error) {
+                console.error("Error generating PDF:", error);
+                alert(`An error occurred while generating the PDF: ${error.message || error}. Check the console for details.`);
+            }
+        }
+    </script>
+</body>
+</html>
